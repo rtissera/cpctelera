@@ -49,7 +49,7 @@ void wait_frames(u16 nframes) {
 void main(void) {
    u8 *pvideomem;        // Pointer to the video memory location where strings will be drawn
    u8 times;             // Counter of number of times to draw 
-   u8 colours[5] = {0};  // 5 Colour values, 1 for mode 2, 2 for mode 1 and 2 more for mode 0
+   u8 colours[6] = {0};  // 5 Colour values, 2 for each mode
 
    // First, disable firmware to prevent it from restoring video modes and 
    // interfering with drawString functions
@@ -78,7 +78,8 @@ void main(void) {
          colours[0] = ++colours[0] & 15;
          
          // Draw the string and wait for some VSYNCs
-         cpct_drawStringM0("$ Mode 0 string $", pvideomem, colours[0], colours[3]);
+         cpct_setDrawCharM0(colours[0], colours[3]);
+         cpct_drawStringM0("$ Mode 0 string $", pvideomem);
          wait_frames(WFRAMES);
 
          // Point to the start of the next character line on screen (80 bytes away)
@@ -104,14 +105,13 @@ void main(void) {
          // Rotate foreground colour using module 4 (AND 0x03)
          colours[1] = ++colours[1] & 3;
 
-         // Draw a string using normal drawString function for mode 1
-         cpct_drawStringM1("Mode 1 string :D", pvideomem, colours[1], colours[4]);
-
+         // Draw a string using drawString function for mode 1
+         cpct_setDrawCharM1(colours[1], colours[4]);
+         cpct_drawStringM1("Mode 1 string :D", pvideomem);
          // Rotate foreground colour again
          colours[1] = ++colours[1] & 3;
-
-         // Draw a string using fast drawString function for mode 1 (in a column 38 bytes to the right)
-         cpct_drawStringM1_f("Mode 1 string (Fast)", pvideomem + 38, colours[1], colours[4]);
+         cpct_setDrawCharM1(colours[1], colours[4]);
+         cpct_drawStringM1("Mode 1 string :D", pvideomem + 38);
 
          // Rotate foreground colour another time and wait for a few VSYNCs
          colours[1] = ++colours[1] & 3;
@@ -135,17 +135,19 @@ void main(void) {
 
       // Draw 25 strings, 1 for each character line on the screen    
       for (times=0; times < 25; times++) {
-         // Alternate between foreground colour or inverse colour (the only 2 
-         // available on mode 2) using an XOR 1 operation that alternates the
-         // value between 0 and 1
+         // Alternate between foreground and background colour for the character
+         // using an XOR 1 operation that alternates the value between 0 and 1
          colours[2] ^= 1;
          
          // Draw string on the screen using current colour and wait for a few VSYNCs
-         cpct_drawStringM2("And, finally, this is a long mode 2 string!!", pvideomem, colours[2]);
+         cpct_setDrawCharM2(colours[2], colours[5]);
+         cpct_drawStringM2("And, finally, this is a long mode 2 string!!", pvideomem);
          wait_frames(WFRAMES);
 
          // Point to the start of the next character line on screen (80 bytes away)
          pvideomem += 0x50;
       }
+      // Alternate Background colour value too, for the next iteration
+      colours[5] ^= 1;
    }
 }

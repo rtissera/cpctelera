@@ -26,14 +26,15 @@
 ##  * Project's build configuration is to be found in build_config.mk    ##
 ##  * Global paths and tool configuration is located at $(CPCT_PATH)/cfg/##
 ###########################################################################
-.PHONY: all clean cleanall
-
 # Logfile where load and run addresses for the generated binary will be logged
-BINADDRLOG=$(OBJDIR)/binaryAddresses.log
+BINADDRLOG   := $(OBJDIR)/binaryAddresses.log
+PREBUILD_OBJ := $(OBJDIR)/prebuildstep.objectfile
+
+.PHONY: all clean cleanall
 
 # MAIN TARGET
 .DEFAULT_GOAL := all
-all: $(OBJSUBDIRS) $(TARGET)
+all: $(OBJSUBDIRS) $(PREBUILD_OBJ) $(TARGET)
 
 ## COMPILING SOURCEFILES AND SAVE OBJFILES IN THEIR CORRESPONDENT SUBDIRS
 $(foreach OF, $(BIN_OBJFILES), $(eval $(call BINFILE2C, $(OF), $(OF:%.$(C_EXT)=%.$(BIN_EXT)))))
@@ -44,38 +45,55 @@ $(foreach OF, $(ASM_OBJFILES), $(eval $(call COMPILEASMFILE, $(OF), $(patsubst $
 ## Generate an Add-BIN-to-DSK rule for each Binary file in DSKFILESDIR
 $(foreach SF, $(DSKINCSRCFILES), $(eval $(call ADDBINFILETODSK, $(DSK), $(SF), $(patsubst $(DSKFILESDIR)/%, $(OBJDSKINCSDIR)/%, $(SF)).$(DSKINC_EXT))))
 
+# Files to be created if they do not exist (for compatibility)
+$(TOUCHIFNOTEXIST):
+	@$(TOUCH) $(TOUCHIFNOTEXIST)
+
+# PREVIOUS BUILDING STEP (CONVERSION TOOLS NORMALLY)
+$(PREBUILD_OBJ): $(IMGCFILES) $(IMGASMFILES) $(IMGBINFILES) $(PREBUILDOBJS)
+	@$(call PRINT,$(PROJNAME),"")
+	@$(call PRINT,$(PROJNAME),"=== PREBUILD PROCCESSING DONE!")
+	@$(call PRINT,$(PROJNAME),"============================================================")
+	@$(call PRINT,$(PROJNAME),"")
+	@touch $(PREBUILD_OBJ)
+
 # LINK RELOCATABLE MACHINE CODE FILES (.REL) INTO A INTEL HEX BINARY (.IHX)
-$(IHXFILE): $(GENOBJFILES) $(OBJFILES) 
+$(IHXFILE): $(NONLINKGENFILES) $(GENOBJFILES) $(OBJFILES)
 	@$(call PRINT,$(PROJNAME),"Linking binary file")
-	$(Z80CC) $(Z80CCLINKARGS) $^ -o "$@"
+	$(Z80CC) $(Z80CCLINKARGS) $(GENOBJFILES) $(OBJFILES) -o "$@"
 
 # GENERATE BINARY FILE (.BIN) FROM INTEL HEX BINARY (.IHX)
-%.bin: %.ihx
+$(BINFILE): $(IHXFILE)
 	@$(call PRINT,$(PROJNAME),"Creating Amsdos binary file $@")
 	$(HEX2BIN) -p 00 "$<" | $(TEE) $@.log
 
 # CREATE BINARY AND GET LOAD AND RUN ADDRESS FROM LOGFILE AND MAPFILE
 $(BINADDRLOG): $(BINFILE)
-	@$(call GETLOADADDRESS,LOADADDR,$(<).log)
-	@$(call GETRUNADDRESS,RUNADDR,$(<:.bin=.map))
-	@$(call CHECKVARIABLEISSET,LOADADDR)
-	@$(call CHECKVARIABLEISSET,RUNADDR)
+	@$(call GETALLADDRESSES,$<)
 	@echo "Generated Binary File $(BINFILE):" > $(BINADDRLOG)
 	@echo "Load Address = $(LOADADDR)"       >> $(BINADDRLOG)
 	@echo "Run  Address = $(RUNADDR)"        >> $(BINADDRLOG)
 
 # GENERATE A DISK FILE (.DSK) AND INCLUDE BINARY FILE (.BIN) INTO IT
-%.dsk: $(BINFILE) $(BINADDRLOG)
-	@$(call PRINT,$(PROJNAME),"Creating Disk File $@")
+$(DSK): $(BINFILE) $(BINADDRLOG)
+	@$(call GETALLADDRESSES,$<)
+	@$(call PRINT,$(PROJNAME),"Creating Disk File '$@'")
 	@$(call CREATEEMPTYDSK,$@)
 	@$(call ADDCODEFILETODSK,$@,$<,$(LOADADDR),$(RUNADDR),$(<:%=%.$(DSKINC_EXT)))
-	@$(call PRINT,$(PROJNAME),"Successfully created $@")
+	@$(call PRINT,$(PROJNAME),"Successfully created '$@'")
 
 # GENERATE A CASSETTE FILE (.CDT) AND INCLUDE BINARY FILE (.BIN) INTO IT
-%.cdt: $(BINFILE) $(BINADDRLOG)
-	@$(call PRINT,$(PROJNAME),"Creating Cassette File $@")
-	@$(call CREATECDT,$<,$(notdir $<),$@,$(LOADADDR),$(RUNADDR))
-	@$(call PRINT,$(PROJNAME),"Successfully created $@")
+$(CDT): $(BINFILE) $(BINADDRLOG) $(CDTMANOBJS)
+	@$(call PRINT,$(PROJNAME),"Creating Cassette file '$@'")
+	@$(call CREATECDT,)
+	@$(call PRINT,$(PROJNAME),"Successfully created '$@'")
+
+# GENERATE A SNAPSHOP FILE (.SNA) AND INCLUDE BINARY FILE (.BIN) INTO IT
+$(SNA): $(BINFILE) $(BINADDRLOG)
+	@$(call GETALLADDRESSES,$<)
+	@$(call PRINT,$(PROJNAME),"Creating Snapshot File '$@'")
+	@$(call CREATESNA,$<,$@,$(LOADADDR),$(RUNADDR))
+	@$(call PRINT,$(PROJNAME),"Successfully created '$@'")
 
 ## Include files in DSKFILESDIR to DSK, print a message and generate a flag file DSKINC
 $(DSKINC): $(DSK) $(DSKINCOBJFILES)

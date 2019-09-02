@@ -1,6 +1,6 @@
 ##-----------------------------LICENSE NOTICE------------------------------------
 ##  This file is part of CPCtelera: An Amstrad CPC Game Engine 
-##  Copyright (C) 2015 ronaldo / Fremos / Cheesetea / ByteRealms (@FranGallegoBR)
+##  Copyright (C) 2018 ronaldo / Fremos / Cheesetea / ByteRealms (@FranGallegoBR)
 ##
 ##  This program is free software: you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 # INCLUDES
 include ../cfg/global_functions.mk
 
-TOOLS=2cdt hex2bin-2.0 iDSK-0.13 sdcc-3.6.8-r9946 img2cpc dskgen
+TOOLS=2cdt cpc2cdt hex2bin-2.0 iDSK-0.19 sdcc-3.6.8-r9946 img2cpc dskgen zx7b scripts/c_scripts
 TOOLSYSTEM=ToolMaker
 
 # TOOLS CONFIG

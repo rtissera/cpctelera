@@ -47,7 +47,7 @@ u8* const g_animation[6] = {
 };
 
 //
-// MAIN: Using keyboard to move a sprite example
+// INITIALIZE: Initialize CPC, Draw demo banner and instructions
 //
 void initialize() {
    u8* pvideomem;               // Pointer to video memory
@@ -70,7 +70,8 @@ void initialize() {
 
    // Draw instructions
    pvideomem = cpct_getScreenPtr(CPCT_VMEM_START, 29, 60);
-   cpct_drawStringM2("[Any Key] Run Opposite", pvideomem, 0);
+   cpct_setDrawCharM2(0, 1);
+   cpct_drawStringM2("[Any Key] Run Opposite", pvideomem);
 }
 
 //

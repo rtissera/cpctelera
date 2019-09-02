@@ -172,12 +172,12 @@ function EnsureExists {
       directory)
          MOD="-d" ;;
       *)
-         Error "Filetype '$1' unrecognized while testing file '$2'."
+         Error "Filetype '$1' unrecognized while testing file '$2'." 121
    esac
    if [ ! $MOD "$2" ]; then
-      Error "$1 '$2' does not exist, and it is required for CPCTelera framework to work propperly. $3"
+      Error "$1 '$2' does not exist, and it is required for CPCTelera framework to work propperly. $3" 121
    elif [ ! -r "$2" ]; then
-      Error "$1 '$2' exists, but it is not readable (check for permissions). $3"
+      Error "$1 '$2' exists, but it is not readable (check for permissions). $3" 121
    fi
 }
 
@@ -270,7 +270,7 @@ function isCommandAvailable {
 function EnsureCommandAvailable {
    isCommandAvailable "$1"
    if [[ "$?" != "0" ]]; then
-      Error "$2"
+      Error "$2" 127
    fi
 }
 
@@ -288,7 +288,7 @@ function EnsureCPPHeaderAvailable {
    if [ -s "$ERRTMP" ]; then
       # File has warnings or errors. We ignore warnings.
       if grep "error" "$ERRTMP"; then
-         Error "$2"
+         Error "$2" 126
       fi
    fi
 }
@@ -391,7 +391,7 @@ Generalized initializers. ${MSG_UPGRADE}"
       if checkSystem osx; then 
          ERROR_MSG="${ERROR_MSG}${MSG_OSXUPGRADE}";
       fi
-      Error "$ERROR_MSG"
+      Error "$ERROR_MSG" 125
    fi
 }
 
@@ -570,7 +570,7 @@ function dec2Bin {
 ## $1: integer decimal number
 ##
 function dec2Hex {
-   echo "obase=16;$1" | bc
+   printf "%x" "$1"
 }
 
 ## Converts a number to decimal, be it a Binary or an hexadecimal one
@@ -751,9 +751,33 @@ function checkSystem {
                return 0
             fi
          ;;
+         "win10linux")
+            if [[ "$SYS" =~ "Linux" ]]; then
+               # Use /proc/version for better compatibilty 
+               if grep -qE "(Microsoft|WSL)" /proc/version &> /dev/null; then
+                  return 0;
+               fi
+            fi
+         ;;
          "linux") 
             if [[ "$SYS" =~ "Linux" ]] || [[ "$SYS" =~ "GNU" ]]; then
                return 0
+            fi
+         ;;
+         "linux64")
+            if [[ "$SYS" =~ "Linux" ]] || [[ "$SYS" =~ "GNU" ]]; then
+               SYS=$(uname -m)
+               if [[ "$SYS" =~ "64" ]]; then
+                  return 0
+               fi
+            fi
+         ;;
+         "linux32")
+            if [[ "$SYS" =~ "Linux" ]] || [[ "$SYS" =~ "GNU" ]]; then
+               SYS=$(uname -m)
+               if [[ ! "$SYS" =~ "64" ]]; then
+                  return 0
+               fi
             fi
          ;;
          "cygwin") 
@@ -764,7 +788,7 @@ function checkSystem {
          "cygwin32") 
             if [[ "$SYS" =~ "CYGWIN" ]]; then
                SYS=$(uname -a)
-               if [[ ! "$SYS" =~ "x86_64" ]]; then
+               if [[ ! "$SYS" =~ "64" ]]; then
                   return 0
                fi
             fi
@@ -772,7 +796,7 @@ function checkSystem {
          "cygwin64") 
             if [[ "$SYS" =~ "CYGWIN" ]]; then
                SYS=$(uname -a)
-               if [[ "$SYS" =~ "x86_64" ]]; then
+               if [[ "$SYS" =~ "64" ]]; then
                   return 0
                fi
             fi
@@ -814,7 +838,7 @@ function bashProfileFilename {
 ##
 function EnsureFilenameHasNoSpaces {
    case "$1" in
-      *" "*) Error "$2 ('$1')";; 
+      *" "*) Error "$2 ('$1')" 124;; 
    esac
 }
 
@@ -1010,7 +1034,7 @@ function makeWithProgressSupervision {
 
    ## Supervise the Making Process
    if ! superviseBackgroundProcess "$!" "$MAKELOG" "$LOGTOTALBYTES" "$PBARSIZE" "$CHECKDELAY"; then
-      Error "${ERRORMSG}. Please, check '${MAKELOG}' for details. Aborting. "
+      Error "${ERRORMSG}. Please, check '${MAKELOG}' for details. Aborting. " 123
    fi
    drawOK
 }
@@ -1081,11 +1105,11 @@ function checkExecutableExists {
 check CPCtelera installation is okay and this file is in its place and has \
 required user permissions."
   if   [ ! -e "$1" ]; then
-     Error "'$1' does not exist. $ERRCPSTR"
+     Error "'$1' does not exist. $ERRCPSTR" 122
   elif [ ! -f "$1" ]; then
-     Error "'$1' is not a regular file and it should be. $ERRCPSTR"
+     Error "'$1' is not a regular file and it should be. $ERRCPSTR" 122
   elif [ ! -r "$1" ]; then 
-     Error "'$1' is not readable. $ERRCPSTR"
+     Error "'$1' is not readable. $ERRCPSTR" 122
   elif [ ! -x "$1" ]; then
      echo "${COLOR_LIGHT_YELLOW}WARNING:${COLOR_CYAN}"
      echo "   '${COLOR_WHITE}$1${COLOR_CYAN}' is not executable. Execution \
@@ -1096,13 +1120,79 @@ executable? (y/n)" ANSWER
      echo "${COLOR_NORMAL}"
      echo
      if [[ "$ANSWER" == "n" ]]; then
-        paramError "'$1' has not been modified. This script cannot continue. Aborting. "
+        paramError "'$1' has not been modified. This script cannot continue. Aborting. " 121
      fi
      echo "${COLOR_CYAN}Changing '${COLOR_WHITE}$1${COLOR_CYAN}' execution permission... "
      if ! chmod +x "$1"; then
         Error "Your user has not got enough privileges to change '$1' execution permission. \
-Please, change it manually and run this script again."
+Please, change it manually and run this script again." 122
      fi
      echo "${COLOR_LIGHT_GREEN}Success!${COLOR_NORMAL}"
   fi
+}
+
+## Ensures that a file of a given type exists and is readable and executable by the user. 
+## Otherwise, it throws an unrecoverable error. If the file is readable but not executable,
+## the script tries to make it executable with chmod.
+##
+## $1: Type of file (file, directory)
+## $2: File/Directory to check for existance
+## $3: Aditional error message, used when file does not exist or is not readable
+##
+function ensureExistsAndIsExecutable {
+   EnsureExists "$1" "$2" "$3"
+   ## Check file is executable and, if not, try to make it so
+   if [ ! -x "$2" ]; then
+     if ! chmod +x "$2"; then
+        Error "File '$2' is required to be executable and it is not. This script tried to change \
+it to executable, but your user has not got enough privileges to do so. Please, change it manually \
+and run this script again." 120
+     fi      
+   fi
+}
+
+## Converts a given string to lowercase
+##
+## $1: String to convert to lowercase
+##
+function toLower {
+   echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+## Converts a given string to uppercase
+##
+## $1: String to convert to uppercase
+##
+function toUpper {
+   echo "$1" | tr '[:lower:]' '[:upper:]'
+}
+
+## Gets a number of bytes from a given file, reading the
+## file as binary data and outputting the read bytes as an
+## ascii-hexadecimal lowercase string
+##
+## $1: File 
+## $2: Number of binary bytes to get
+## 
+function getFileInitialBytes {
+   od -An -t x1 -N "$2" -v "$1" | tr -d " "
+}
+
+## Checks if a given file does start by a given binary string data.
+## Binary string data must be given in ascii-hexadecimal lowercase form.
+## It returns 0 (true) if the file starts by the given binary data, or
+## 1 (false) otherwise.
+## Warning: Length of $2 string must be even. Otherwise, check will always
+## return 1 (false).
+##
+## $1: File to check
+## $2: Starting hexadecimal bytes (text string)
+## 
+function binaryFileStartsWith {
+   local D=$(( ${#2} / 2 ))
+   local B=$(getFileInitialBytes "$1" "$D")
+   if [ "$2" = "$B" ]; then
+      return 0
+   fi
+   return 1
 }

@@ -1,6 +1,6 @@
 ##-----------------------------LICENSE NOTICE------------------------------------
 ##  This file is part of CPCtelera: An Amstrad CPC Game Engine 
-##  Copyright (C) 2015 ronaldo / Fremos / Cheesetea / ByteRealms (@FranGallegoBR)
+##  Copyright (C) 2018 ronaldo / Fremos / Cheesetea / ByteRealms (@FranGallegoBR)
 ##
 ##  This program is free software: you can redistribute it and/or modify
 ##  it under the terms of the GNU Lesser General Public License as published by
@@ -17,7 +17,6 @@
 ##------------------------------------------------------------------------------
 
 ###########################################################################
-##     CPCTELERA ENGINE: Example of use of arkos tracker player routines ##
 ##              General Utility functions for the Makefile               ##
 ##-----------------------------------------------------------------------##
 ## This file contines general function definitions that are useful to    ##
@@ -26,24 +25,16 @@
 ## you should change the build_config.mk                                 ##
 ###########################################################################
 
-# ANSI Sequences for terminal colored printing
-COLOR_RED=\033[1;31;49m
-COLOR_YELLOW=\033[1;33;49m
-COLOR_NORMAL=\033[0;39;49m
+# Get directory path of this file at the moment of including it
+THIS_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
-#################
-# PRINT: Print a nice and colorful message
-#
-# $(1): Subsystem that shows the message
-# $(2): Message to print
-#
-define PRINT
-	@printf "$(COLOR_RED)["
-	@printf $(1)
-	@printf "]$(COLOR_YELLOW) "
-	@printf $(2)
-	@printf "$(COLOR_NORMAL)\n"
-endef
+# Get the other makefiles
+include $(THIS_DIR)/modules/utils.mk
+include $(THIS_DIR)/modules/pack.mk
+include $(THIS_DIR)/modules/img2sp.mk
+include $(THIS_DIR)/modules/tmx2data.mk
+include $(THIS_DIR)/modules/cdtman.mk
+include $(THIS_DIR)/modules/aks2data.mk
 
 #################
 # GETLOADADDRESS: Get load address from a created binary file (parsing hex2bin's log)
@@ -62,23 +53,23 @@ endef
 # $(2): File.map that has been compiled (and has .bin.log and .map files associated)
 #
 define GETRUNADDRESS
-  $(eval $(1)   = $(shell sed -n 's/^ *0000\([0-9A-F]*\) *cpc_run_address  *.*$$/\1/p' < $(2);))
-  $(eval $(1)_1 = $(shell sed -n 's/^ *0000\([0-9A-F]*\) *init  *.*$$/\1/p'            < $(2);))
-  $(eval $(1)_2 = $(shell sed -n 's/^ *0000\([0-9A-F]*\) *_main  *.*$$/\1/p'           < $(2);))
-  $(eval $(1)   = $(shell if [ -z "$($(1))" ]; then echo "$($(1)_1)"; fi; ) )
-  $(eval $(1)   = $(shell if [ -z "$($(1))" ]; then echo "$($(1)_2)"; fi; ) )
+  $(eval $(1)   := $(shell sed -n 's/^ *0000\([0-9A-F]*\) *cpc_run_address  *.*$$/\1/p' < $(2);))
+  $(eval $(1)_1 := $(shell sed -n 's/^ *0000\([0-9A-F]*\) *init  *.*$$/\1/p'            < $(2);))
+  $(eval $(1)_2 := $(shell sed -n 's/^ *0000\([0-9A-F]*\) *_main  *.*$$/\1/p'           < $(2);))
+  $(eval $(1)   := $(shell if [ -z "$($(1))" ]; then echo "$($(1)_1)"; fi; ) )
+  $(eval $(1)   := $(shell if [ -z "$($(1))" ]; then echo "$($(1)_2)"; fi; ) )
 endef
 
 #################
-# CHECKVARIABLEISSET: Checks if a given variable is set. If not, it prints out an error message and aborts generation
+# GETALLADDRESSES: Gets Load and Run Addresses and checks they are OK
 #
-# $(1): Variable to check 
+# $(1): Binary file generated (from which to get addresses)
 #
-define CHECKVARIABLEISSET
-  if [ "$($(1))" = "" ]; then \
-    echo "**!!ERROR!!**: $(1) is not set. Aborting."; \
-    exit 1; \
-  fi
+define GETALLADDRESSES 
+	@$(call GETLOADADDRESS,LOADADDR,$1.log)
+	@$(call GETRUNADDRESS,RUNADDR,$(1:.bin=.map))
+	@$(call CHECKVARIABLEISSET,LOADADDR)
+	@$(call CHECKVARIABLEISSET,RUNADDR)
 endef
 
 #################
@@ -140,49 +131,15 @@ $(3): $(2)
 endef
 
 #################
-# CREATECDT: Create a CDT file with the BINARY added to it and converted to AMSDOS BINARY
+# CREATESNA: Create a SNA file with the BINARY added to it 
 #
-# $(1): Binary file to be inserted in the CDT
-# $(2): Name (up to 16 chars) that the file will have inside the CDT (displayed when loading)
-# $(3): CDT file to be created
-# $(4): Memory address where binary will be loaded (LOAD ADDRESS)
-# $(5): Memory address where main program starts (RUN ADDRESS)
+# $(1): Binary file to be inserted in the SNA
+# $(2): SNA file to be created
+# $(3): Memory address where binary will be loaded (LOAD ADDRESS)
+# $(4): Memory address where main program starts (RUN ADDRESS)
 #
-define CREATECDT
-  @$(2CDT) -n -X 0x$(5) -L 0x$(4) -r $(2) $(1) $(3) > /dev/null
-endef
-
-#################
-# CREATEBLANKCDT: Create a Blank CDT file
-#
-# $(1): CDT file to be created
-#
-define CREATEBLANKCDT
-	@$(2CDT) -n . $(1) > /dev/null
-endef
-
-#################
-# ADDBASICFILETOCDT: Adds a BASIC file to a CDT file
-#
-# $(1): CDT file where the BASIC file will be added
-# $(2): BASIC file to be added (path to it in the filesystem)
-# $(3): Name (up to 16 characters) to assign to the file inside the CDT (displayed when loading)
-#
-define ADDBASICFILETOCDT
-	@$(2CDT) -F 0 $(2) -r $(3) $(1) > /dev/null
-endef
-
-#################
-# ADDBINARYFILETOCDT: Adds a BINARY file to a CDT file
-#
-# $(1): CDT file where the BINARY file will be added
-# $(2): Binary file to be inserted in the CDT
-# $(3): Name (up to 16 characters) to assign to the file inside the CDT (displayed when loading)
-# $(4): Memory address where binary will be loaded (LOAD ADDRESS)
-# $(5): Memory address where main program starts (RUN ADDRESS)
-#
-define ADDBINARYFILETOCDT
-	@$(2CDT) -X 0x$(5) -L 0x$(4) -r $(3) $(2) $(1) > /dev/null
+define CREATESNA
+  @$(BIN2SNA) -pc 0x$(4) $(1) 0x$(3) > $(2)
 endef
 
 #################
@@ -215,104 +172,5 @@ endef
 #
 define BINFILE2C
 $(1): $(2)
-	$(BIN2C) $(2) -h "cpctelera.h" > $(1)
-endef
-
-#################
-# IMG2SPRITES: General rule to convert images into C arrays representing
-# sprites. Updates IMGCFILES and OBJS2CLEAN adding new C files
-# that result from image conversions
-#
-# $(1): Image file to be converted into C sprite
-# $(2): Graphics mode (0,1,2) for the generated values
-# $(3): Prefix to add to all C-identifiers generated
-# $(4): Width in pixels of each sprite/tile/etc that will be generated
-# $(5): Height in pixels of each sprite/tile/etc that will be generated
-# $(6): Firmware palette used to convert the image file into C values
-# $(7): (mask,tileset,) "mask":    generate interlaced mask for all sprites converted
-#                       "tileset": generate a tileset array including pointers to all sprites
-# $(8): Output subfolder for generated .C and .H files (inside project folder)
-# $(9): (hwpalette) "hwpalette":   output palette array as hardware values
-# $(10): Aditional options (you can use this to pass aditional modifiers to cpct_img2tileset)
-#
-define IMG2SPRITES
-$(eval I2S_C  := $(basename $(1)).c)
-$(eval I2S_H  := $(basename $(1)).h)
-$(eval I2S_NC := $(notdir $(I2S_C)))
-$(eval I2S_NH := $(notdir $(I2S_H)))
-$(eval I2S_C2 := $(shell if [ ! "$(8)" = "" ]; then A="$(8)"; A="$${A%%/}"; echo "$${A}/$(I2S_NC)"; else echo "$(I2S_C)"; fi))
-$(eval I2S_H2 := $(shell if [ ! "$(8)" = "" ]; then A="$(8)"; A="$${A%%/}"; echo "$${A}/$(I2S_NH)"; else echo "$(I2S_H)"; fi))
-$(eval I2S_CH := $(I2S_C2) $(I2S_H2))
-$(eval I2S_P  := $(shell if [ "$(7)" = "mask" ]; then echo "-nt -im"; elif [ ! "$(7)" = "tileset" ]; then echo "-nt"; fi))
-$(eval I2S_P  := $(I2S_P) $(shell if [ "$(9)" = "hwpalette" ]; then echo "-oph"; fi))
-.SECONDARY: $(I2S_CH)
-$(I2S_CH): $(1)
-	@$(call PRINT,$(PROJNAME),"Converting $(1) into C-arrays...")
-	cpct_img2tileset $(I2S_P) -m "$(2)" -bn "$(3)" -tw "$(4)" -th "$(5)" -pf $(6) $(10) $(1);
-	@$(call PRINT,$(PROJNAME),"Moving generated files:")
-	@$(call PRINT,$(PROJNAME)," - '$(I2S_C)' > '$(I2S_C2)'")
-	@$(call PRINT,$(PROJNAME)," - '$(I2S_H)' > '$(I2S_H2)'")
-	@if [ ! "$(8)" = "" ]; then \
-	   mv "$(I2S_C)" "$(I2S_C2)"; \
-	   mv "$(I2S_H)" "$(I2S_H2)"; \
-	fi
-IMGCFILES  := $(I2S_C2) $(IMGCFILES)
-OBJS2CLEAN := $(I2S_CH) $(OBJS2CLEAN)
-endef
-
-
-#################
-# TMX2C: General rule to convert TMX tilemaps into C arrays.
-# Updates IMGCFILES and OBJS2CLEAN adding new C files that result from 
-# tmx conversions
-#
-# $(1): TMX file to be converted to C array
-# $(2): C identifier for the generated C array
-# $(3): Output folder for C and H files generated (Default same folder)
-# $(4): Bits per item (1,2,4 or 6 to codify tilemap into a bitarray). Blanck for normal integer tilemap array
-# $(5): Aditional options (you can use this to pass aditional modifiers to cpct_tmx2csv)
-#
-define TMX2C
-$(eval T2C_C  := $(basename $(1)).c)
-$(eval T2C_H  := $(basename $(1)).h)
-$(eval T2C_NC := $(notdir $(T2C_C)))
-$(eval T2C_NH := $(notdir $(T2C_H)))
-$(eval T2C_OF := $(shell if [ ! "$(3)" = "" ]; then echo "-of $(3)"; else echo ""; fi))
-$(eval T2C_C2 := $(shell if [ ! "$(3)" = "" ]; then A="$(3)"; A="$${A%%/}"; echo "$${A}/$(T2C_NC)"; else echo "$(T2C_C)"; fi))
-$(eval T2C_H2 := $(shell if [ ! "$(3)" = "" ]; then A="$(3)"; A="$${A%%/}"; echo "$${A}/$(T2C_NH)"; else echo "$(T2C_H)"; fi))
-$(eval T2C_BA := $(shell if [ ! "$(4)" = "" ]; then echo "-ba $(4)"; else echo ""; fi))
-$(eval T2C_CH := $(T2C_C2) $(T2C_H2))
-.SECONDARY: $(T2C_CH)
-$(T2C_CH): $(1)
-	@$(call PRINT,$(PROJNAME),"Converting tilemap in $(1) into C-arrays...")
-	cpct_tmx2csv -gh -ci $(2) $(T2C_OF) $(T2C_BA) $(5) $(1)
-IMGCFILES  := $(T2C_C2) $(IMGCFILES)
-OBJS2CLEAN := $(T2C_CH) $(OBJS2CLEAN)
-endef
-
-#################
-# AKS2C: General rule to convert AKS music files into data arrays usable from C and ASM.
-# Updates IMGASMFILES and OBJS2CLEAN adding new .s/.h files that result from AKS conversions
-#
-# $(1): AKS file to be converted to data array
-# $(2): C identifier for the generated data array (will have underscore in front on ASM)
-# $(3): Output folder for .s and .h files generated (Default same folder)
-# $(4): Memory address where music data will be loaded
-# $(5): Aditional options (you can use this to pass aditional modifiers to cpct_aks2c)
-#
-define AKS2C
-$(eval A2C_S  := $(basename $(1)).s)
-$(eval A2C_H  := $(basename $(1)).h)
-$(eval A2C_NS := $(notdir $(A2C_S)))
-$(eval A2C_NH := $(notdir $(A2C_H)))
-$(eval A2C_OF := $(shell if [ ! "$(3)" = "" ]; then echo "-od $(3)"; else echo ""; fi))
-$(eval A2C_S2 := $(shell if [ ! "$(3)" = "" ]; then A="$(3)"; A="$${A%%/}"; echo "$${A}/$(A2C_NS)"; else echo "$(A2C_S)"; fi))
-$(eval A2C_H2 := $(shell if [ ! "$(3)" = "" ]; then A="$(3)"; A="$${A%%/}"; echo "$${A}/$(A2C_NH)"; else echo "$(A2C_H)"; fi))
-$(eval A2C_SH := $(A2C_S2) $(A2C_H2))
-.SECONDARY: $(A2C_SH)
-$(A2C_SH): $(1)
-	@$(call PRINT,$(PROJNAME),"Converting music in $(1) into data arrays...")
-	cpct_aks2c -m "$(4)" $(A2C_OF) -id $(2) $(1)
-IMGASMFILES := $(A2C_S2) $(IMGASMFILES)
-OBJS2CLEAN  := $(A2C_SH) $(OBJS2CLEAN)
+	$(BIN2C) $(2) -i "cpctelera.h" > $(1)
 endef

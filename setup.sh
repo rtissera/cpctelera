@@ -66,32 +66,57 @@ setting up tools, library and examples."
 CPCT_EXAMPLES_DIR=${SETUP_PATH}/examples
 CPCT_SRC_DIR=${CPCT_MAIN_DIR}/src
 CPCT_CFG_DIR=${CPCT_MAIN_DIR}/cfg
+CPCT_BIN_DIR=${CPCT_MAIN_DIR}/bin
+CPCT_DOCS_DIR=${CPCT_MAIN_DIR}/docs
 CPCT_LOGS_DIR=${CPCT_MAIN_DIR}/logs
 CPCT_TOOLS_2CDT_DIR=${CPCT_TOOLS_DIR}/2cdt
+CPCT_TOOLS_CPC2CDT_DIR=${CPCT_TOOLS_DIR}/cpc2cdt
 CPCT_TOOLS_HEX2BIN_DIR=${CPCT_TOOLS_DIR}/hex2bin-2.0
-CPCT_TOOLS_IDSK_DIR=${CPCT_TOOLS_DIR}/iDSK-0.13
+CPCT_TOOLS_IDSK_DIR=${CPCT_TOOLS_DIR}/iDSK-0.19
 CPCT_TOOLS_SDCC_DIR=${CPCT_TOOLS_DIR}/sdcc-3.6.8-r9946
 CPCT_TOOLS_IMG2CPC_DIR=${CPCT_TOOLS_DIR}/img2cpc
 CPCT_TOOLS_RGAS_DIR=${CPCT_TOOLS_DIR}/rgas-1.2.2
 CPCT_TOOLS_ARKOS_DIR=${CPCT_TOOLS_DIR}/arkosTracker-1.0
 CPCT_TEMPLATES_DIR=${CPCT_SCRIPTS_DIR}/templates
+CPCT_TEMPLATES_NEWPRJ_DIR=${CPCT_SCRIPTS_DIR}/templates/newprj
+CPCT_TEMPLATES_NEWPRJ_SRC_DIR=${CPCT_SCRIPTS_DIR}/templates/newprj/src
+CPCT_TEMPLATES_NEWPRJ_CFG_DIR=${CPCT_SCRIPTS_DIR}/templates/newprj/cfg
+CPCT_TEMPLATES_NEWPRJ_VCD_DIR=${CPCT_SCRIPTS_DIR}/templates/newprj/vscode
+
 
 ## Main Makefiles and other files
 CPCT_TOOLS_MAKEFILE=${CPCT_TOOLS_DIR}/Makefile
 CPCT_LIB_MAKEFILE=${CPCT_MAIN_DIR}/Makefile
 CPCT_EXAMPLES_MAKEFILE=${CPCT_EXAMPLES_DIR}/Makefile
-CPCT_TEMPLATES_MAKEFILE=${CPCT_TEMPLATES_DIR}/Makefile
-CPCT_TEMPLATES_CFG=${CPCT_TEMPLATES_DIR}/build_config.mk
-CPCT_TEMPLATES_MAIN=${CPCT_TEMPLATES_DIR}/main.c
+CPCT_TEMPLATES_MAKEFILE=${CPCT_TEMPLATES_NEWPRJ_DIR}/Makefile
+CPCT_TEMPLATES_CFG=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/build_config.mk
+CPCT_TEMPLATES_CDT=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/cdt_manager.mk
+CPCT_TEMPLATES_PCK=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/compression.mk
+CPCT_TEMPLATES_MUS=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/music_conversion.mk
+CPCT_TEMPLATES_TIL=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/tilemap_conversion.mk
+CPCT_TEMPLATES_IMG=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/image_conversion.mk
+CPCT_TEMPLATES_CFG_TMPL=${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}/build_config.tmpl.mk
+CPCT_TEMPLATES_MAIN=${CPCT_TEMPLATES_NEWPRJ_SRC_DIR}/main.c
 CPCT_TEMPLATES_BASHRC=${CPCT_TEMPLATES_DIR}/bashrc.tmpl
+
+## Executable files
+CPCT_ARKOS_AKS2BIN=${CPCT_TOOLS_ARKOS_DIR}/tools/AKSToBIN.exe
+CPCT_ARKOS_STK2AKS=${CPCT_TOOLS_ARKOS_DIR}/tools/STKToAKS.exe
 
 ## All directories and files
 CPCT_DIRS=("${CPCT_MAIN_DIR}" "${CPCT_LOGS_DIR}" "${CPCT_EXAMPLES_DIR}" "${CPCT_TOOLS_DIR}"
            "${CPCT_SRC_DIR}" "${CPCT_CFG_DIR}" "${CPCT_TOOLS_2CDT_DIR}" "${CPCT_TOOLS_HEX2BIN_DIR}" 
            "${CPCT_TOOLS_IDSK_DIR}" "${CPCT_TOOLS_SDCC_DIR}" "${CPCT_TEMPLATES_DIR}"
-           "${CPCT_TOOLS_IMG2CPC_DIR}" "${CPCT_TOOLS_RGAS_DIR}" "${CPCT_TOOLS_ARKOS_DIR}")
+           "${CPCT_TEMPLATES_NEWPRJ_DIR}" "${CPCT_TOOLS_IMG2CPC_DIR}" "${CPCT_TOOLS_RGAS_DIR}" 
+           "${CPCT_TOOLS_ARKOS_DIR}" "${CPCT_TEMPLATES_NEWPRJ_SRC_DIR}" "${CPCT_BIN_DIR}"
+           "${CPCT_TEMPLATES_NEWPRJ_CFG_DIR}" "${CPCT_TEMPLATES_NEWPRJ_VCD_DIR}" 
+           "${CPCT_DOCS_DIR}" "${CPCT_TOOLS_CPC2CDT_DIR}" )
 CPCT_FILES=("${CPCT_TOOLS_MAKEFILE}" "${CPCT_LIB_MAKEFILE}" "${CPCT_EXAMPLES_MAKEFILE}" 
-            "${CPCT_TEMPLATES_CFG}" "${CPCT_TEMPLATES_MAKEFILE}" "${CPCT_TEMPLATES_MAIN}")
+            "${CPCT_TEMPLATES_CFG_TMPL}" "${CPCT_TEMPLATES_MAKEFILE}" "${CPCT_TEMPLATES_MAIN}"
+            "${CPCT_TEMPLATES_CDT}" "${CPCT_TEMPLATES_PCK}" "${CPCT_TEMPLATES_MUS}" 
+            "${CPCT_TEMPLATES_TIL}" "${CPCT_TEMPLATES_IMG}" "${CPCT_TEMPLATES_BASHRC}"
+           )
+CPCT_EXECUTABLE_FILES=("${CPCT_ARKOS_AKS2BIN}" "${CPCT_ARKOS_STK2AKS}")
 
 ## Generated files
 CPCT_EXAMPLES_BUILD_LOG=${CPCT_LOGS_DIR}/examples_building.log
@@ -126,7 +151,7 @@ COMM_NUM=$((COMM_NUM + 1))
 COMMAND_EXPLANATION[$COMM_NUM]="${REQUIRED_COMMANDS[$COMM_NUM]} is required to compile SDCC. Please, install it \
 and run setup again."
 COMM_NUM=$((COMM_NUM + 1))
-GCC_MINIMUM_VERSION="4.6"
+GCC_MINIMUM_VERSION="5.1"
 
 REQUIRED_LIBRARIES=("boost/graph/adjacency_list.hpp")
 LIBRARIES_EXPLANATION[0]="${REQUIRED_LIBRARIES[0]} is part of libboost, which is required for building SDCC. Please, install boost / libboost-dev / libboost-devel or similar in your system and run setup again."
@@ -210,6 +235,9 @@ coloredMachineEcho "${COLOR_CYAN}" 0.005 "> Checking important files......."
 for (( i = 0; i < ${#CPCT_FILES[@]}; i++ )); do
    EnsureExists file "${CPCT_FILES[$i]}"
 done
+for (( i = 0; i < ${#CPCT_EXECUTABLE_FILES[@]}; i++ )); do
+   ensureExistsAndIsExecutable file "${CPCT_EXECUTABLE_FILES[$i]}"
+done
 drawOK
 
 # Check installed commands
@@ -235,12 +263,12 @@ else
    checkMinimumGCCVersion "$GCC_MINIMUM_VERSION"
    case "$?" in
       1) Error "CPCtelera requires GCC $GCC_MINIMUM_VERSION or greater. Please, update \
-   your GCC version and run setup again." 
+   your GCC version and run setup again." 1
       ;;
       -1) Error "It was impossible to determine your GCC version. Either your GCC version \
    is too old (previous to 1999) or something is wrong with your GCC installation. Please \
    check your GCC installation and update your version to $GCC_MINIMUM_VERSION or greater \
-   and run setup again."
+   and run setup again." 2
       ;;
       *) drawOK 
       ;;
@@ -325,6 +353,7 @@ PROFILE=$(bashProfileFilename)
 # Configuring CPCTelera global path in templates
 coloredMachineEcho "${COLOR_CYAN}" 0.005 ">>> CPCTelera full path: ${COLOR_WHITE}${CPCT_MAIN_DIR}"$'\n'
 coloredMachineEcho "${COLOR_CYAN}" 0.005 ">>> Inserting full path into build config template..."
+cp "${CPCT_TEMPLATES_CFG_TMPL}" "${CPCT_TEMPLATES_CFG}"
 replaceTaggedLine "${CPCT_TAG_MAINPATH}" "CPCT_PATH := ${CPCT_MAIN_DIR}\#${CPCT_TAG_MAINPATH}" "${CPCT_TEMPLATES_CFG}" '#'
 drawOK
 
